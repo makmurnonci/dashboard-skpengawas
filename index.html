@@ -152,7 +152,12 @@ start(u)});
 async function start(u){if(started)return;started=true;$("lg").hidden=true;$("app").hidden=false;db=fs;me=u.uid;
 try{isOwner=(await fs.doc("admins/"+me).get()).exists}catch(e){}
 cur=me;$("te").hidden=!isOwner;myname=u.displayName||u.email||"";$("who").textContent=myname;list();
-const er2=e=>{$("note").hidden=false;if(e.code=="permission-denied"){$("note").textContent="Email Anda ("+u.email+") belum diizinkan. Permintaan akses sudah dikirim otomatis ke admin. Setelah disetujui, muat ulang halaman ini.";if(!reqd&&!isOwner){reqd=true;fs.doc("menunggu/"+me).set({email:(u.email||"").toLowerCase(),nama:u.displayName||"",t:Date.now()}).catch(()=>{})}}else $("note").textContent="Tidak dapat membaca data: "+(e.message||e.code)};
+const er2=e=>{$("note").hidden=false;if(e.code=="permission-denied"){if(isOwner||reqd)return;reqd=true;const em=(u.email||"").toLowerCase();
+$("note").innerHTML='Akun Anda (<b>'+E(em)+'</b>) sudah terdaftar, tetapi belum disetujui admin. Tekan tombol di bawah untuk meminta persetujuan.<div class="row" style="justify-content:flex-start"><button class="btn p" id="mnb">Minta persetujuan</button><button class="btn" id="mnr">Muat ulang</button></div><div id="mns" class="sub"></div>';
+$("mnr").onclick=()=>location.reload();
+$("mnb").onclick=async()=>{try{await fs.doc("menunggu/"+me).set({email:em,nama:u.displayName||"",t:Date.now()});$("mnb").disabled=true;$("mns").textContent="✓ Permintaan terkirim ke admin. Setelah admin menyetujui, tekan Muat ulang."}catch(x){$("mns").textContent="Gagal: "+(x.message||x.code)}};
+fs.doc("menunggu/"+me).get().then(d=>{if(d.exists){$("mnb").disabled=true;$("mns").textContent="✓ Permintaan sudah terkirim, menunggu persetujuan admin."}}).catch(()=>{})}
+else $("note").textContent="Tidak dapat membaca data: "+(e.message||e.code)};
 const on=(p,f)=>(p.includes("/")&&p.split("/").length%2==0?fs.doc(p):fs.collection(p)).onSnapshot(f,er2),S=()=>{if(!$("s").hidden)sk()};
 on("sekolah",s=>{sch={};s.docs.forEach(d=>sch[d.id]=d.data());reb();list();S()});
 on("sekolah_baru",s=>{sb={};s.docs.forEach(d=>sb[d.id]=d.data());reb();list();S()});
