@@ -15,7 +15,7 @@ h1{font-size:20px;margin:0}.sub{color:var(--mu);font-size:13px}
 button,select,input{font:inherit;color:var(--tx)}
 .tab,.btn{border:1px solid var(--bd);background:var(--sf);padding:8px 14px;border-radius:8px;cursor:pointer}
 .tab.on,.btn.p{background:var(--ac);border-color:var(--ac);color:#fff}
-.btn:disabled{opacity:.5;cursor:default}
+.btn:disabled{opacity:.5;cursor:default}.tab:disabled{opacity:.5;cursor:not-allowed}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
 label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
 input[type=text],input[type=password],select{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
@@ -92,7 +92,7 @@ $("ch").innerHTML=["Semua","TK","SD","SMP","Lainnya"].map(c=>`<span class="chip$
 $("ch").onclick=e=>{if(!e.target.classList.contains("chip"))return;flt=e.target.textContent;[...$("ch").children].forEach(c=>c.classList.toggle("on",c===e.target));list()};
 $("q").oninput=list;
 function list(){const t=taken(),q=$("q").value.toLowerCase();
-$("ls").innerHTML=SL.filter(s=>(flt=="Semua"||s[2]==flt)&&(s[1].toLowerCase().includes(q)||s[0].includes(q))).map(s=>{const o=t[s[0]];return `<label class="it${o?" dis":""}" style="margin:0"><input type="checkbox" value="${s[0]}"${sel.has(s[0])?" checked":""}${o?" disabled":""}><span>${E(s[1])}<br><small>NPSN ${s[0]} · ${s[2]}</small></span>${o?`<span class="tk">Binaan<br>${E(o)}</span>`:""}${isOwner?`<button class="btn" data-x="${s[0]}" style="padding:2px 8px;margin-left:8px">Hapus</button>`:""}</label>`}).join("")||'<div class="it sub">Tidak ada sekolah.</div>';
+$("ls").innerHTML=SL.filter(s=>(flt=="Semua"||s[2]==flt)&&(s[1].toLowerCase().includes(q)||s[0].includes(q))).map(s=>{const o=t[s[0]];return `<label class="it${o||denied?" dis":""}" style="margin:0"><input type="checkbox" value="${s[0]}"${sel.has(s[0])?" checked":""}${o||denied?" disabled":""}><span>${E(s[1])}<br><small>NPSN ${s[0]} · ${s[2]}</small></span>${o?`<span class="tk">Binaan<br>${E(o)}</span>`:""}${isOwner?`<button class="btn" data-x="${s[0]}" style="padding:2px 8px;margin-left:8px">Hapus</button>`:""}</label>`}).join("")||'<div class="it sub">Tidak ada sekolah.</div>';
 $("cnt").textContent=sel.size+" sekolah dipilih"}
 $("ls").onchange=e=>{e.target.checked?sel.add(e.target.value):sel.delete(e.target.value);list()};
 $("pre").onchange=e=>{const p=D.P[e.target.value];px=p?+e.target.value:null;if(!p)return;const t=taken();$("nama").value=p.n;$("nip").value=p.nip;$("pk").innerHTML=opt(PK,p.pk);$("jb").innerHTML=opt(JB,p.jb);sel=new Set(p.s.filter(n=>!t[n]));list()};
@@ -146,7 +146,8 @@ $("vk").onclick=async()=>{const u=auth.currentUser;await u.reload();if(u.emailVe
 function izl(){$("izl").innerHTML=Object.keys(iz).sort().map(e=>`<div class="it" style="cursor:default"><span>${E(e)}</span><button class="btn" style="margin-left:auto" data-e="${E(e)}">Hapus</button></div>`).join("")||'<div class="it sub">Belum ada email.</div>'}
 $("izb").onclick=async()=>{const L=$("izt").value.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@\S+\.\S+$/.test(x));if(!L.length)return alert("Tidak ada email yang valid.");try{for(const e of L)await fs.doc("izin/"+e).set({t:Date.now()});$("izt").value="";$("izs").textContent="✓ "+L.length+" email ditambahkan"}catch(e){alert("Gagal: "+(e.message||e.code))}};
 $("izl").onclick=async e=>{const m=e.target.dataset.e;if(!m||!confirm("Hapus izin "+m+"? (Data yang sudah diisi tidak ikut terhapus)"))return;try{await fs.doc("izin/"+m).delete()}catch(x){alert("Gagal: "+(x.message||x.code))}};
-var mn={},reqd=false,wantReq=false;
+var mn={},reqd=false,wantReq=false,denied=false;
+function lockUI(){denied=true;const t=document.querySelector('.tab[data-t="s"]');t.disabled=true;t.title="Aktif setelah disetujui admin";$("sv").disabled=true;$("pre").disabled=true;if(!$("s").hidden)document.querySelector('.tab[data-t="f"]').click();list()}
 function mnl(){const k=Object.keys(mn);$("mnc").hidden=!k.length;$("mnl").innerHTML=k.map(id=>`<div class="it" style="cursor:default"><span>${E(mn[id].nama||"")} <small>${E(mn[id].email||"")}</small></span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn p" data-a="y" data-u="${E(id)}">Izinkan</button><button class="btn" data-a="n" data-u="${E(id)}">Tolak</button></span></div>`).join("")}
 $("mnl").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const id=b.dataset.u,d=mn[id];if(!d)return;try{if(b.dataset.a=="y")await fs.doc("izin/"+String(d.email).toLowerCase()).set({t:Date.now()});await fs.doc("menunggu/"+id).delete()}catch(x){alert("Gagal: "+(x.message||x.code))}};
 var pendName="";
@@ -158,8 +159,8 @@ start(u)});
 async function start(u){if(started)return;started=true;$("lg").hidden=true;$("app").hidden=false;db=fs;me=u.uid;
 try{isOwner=(await fs.doc("admins/"+me).get()).exists}catch(e){}
 cur=me;$("te").hidden=!isOwner;myname=u.displayName||u.email||"";$("who").textContent=myname;list();
-const er2=e=>{$("note").hidden=false;if(e.code=="permission-denied"){if(isOwner||reqd)return;reqd=true;const em=(u.email||"").toLowerCase();
-$("note").innerHTML='Akun Anda (<b>'+E(em)+'</b>) sudah terdaftar, tetapi belum disetujui admin. Tekan tombol di bawah untuk meminta persetujuan.<div class="row" style="justify-content:flex-start"><button class="btn p" id="mnb">Minta persetujuan</button><button class="btn" id="mnr">Muat ulang</button></div><div id="mns" class="sub"></div>';
+const er2=e=>{$("note").hidden=false;if(e.code=="permission-denied"){if(!isOwner)lockUI();if(isOwner||reqd)return;reqd=true;const em=(u.email||"").toLowerCase();
+$("note").innerHTML='Akun Anda (<b>'+E(em)+'</b>) sudah terdaftar, tetapi belum disetujui admin. Tekan tombol di bawah untuk meminta persetujuan. Pratinjau SK dan pemilihan sekolah aktif setelah admin menyetujui.<div class="row" style="justify-content:flex-start"><button class="btn p" id="mnb">Minta persetujuan</button><button class="btn" id="mnr">Muat ulang</button></div><div id="mns" class="sub"></div>';
 $("mnr").onclick=()=>location.reload();
 $("mnb").onclick=async()=>{try{await fs.doc("menunggu/"+me).set({email:em,nama:u.displayName||pendName,t:Date.now()});$("mnb").disabled=true;$("mns").textContent="✓ Permintaan terkirim ke admin. Setelah admin menyetujui, tekan Muat ulang."}catch(x){$("mns").textContent="Gagal: "+(x.message||x.code)}};
 if(wantReq)$("mnb").click();
