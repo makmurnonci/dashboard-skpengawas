@@ -39,6 +39,7 @@ input[type=text],input[type=password],select{width:100%;padding:9px 10px;border:
 <script src="firebase-config.js"></script></head><body><div class="w" id="lg" hidden style="max-width:420px"><div class="card"><h1 style="margin-bottom:2px">Dashboard SK Pengawas</h1><div class="sub">Dinas Pendidikan dan Kebudayaan Kota Parepare</div>
 <div id="lgf"><label>Email</label><input type="text" id="le" autocomplete="username"><label>Kata sandi</label><input type="password" id="lp" autocomplete="current-password">
 <div class="row" style="justify-content:flex-start"><button class="btn p" id="lin">Masuk</button><button class="btn" id="lup">Daftar</button><button class="btn" id="lgo">Masuk dengan Google</button></div>
+<div class="card" style="margin:14px 0 0;background:var(--ac2)"><b>Pengawas baru?</b><div class="sub" style="margin:2px 0 8px">Masuk dengan akun Google Anda. Akun otomatis terdaftar dan permintaan persetujuan langsung dikirim ke admin.</div><button class="btn p" id="lrq">Minta persetujuan admin</button></div>
 <div style="margin-top:10px"><a href="#" id="lrs" class="sub">Lupa kata sandi?</a></div></div>
 <div id="vf" hidden><p>Kami mengirim tautan verifikasi ke <b id="ve"></b>. Klik tautan di email tersebut, lalu tekan tombol di bawah.</p><div class="row" style="justify-content:flex-start"><button class="btn p" id="vk">Saya sudah verifikasi</button><button class="btn" id="vr">Kirim ulang</button><button class="btn" id="vo">Keluar</button></div><div id="vm" class="sub" style="margin-top:8px"></div></div>
 <div id="lm" style="color:var(--no);margin-top:10px;font-size:14px"></div></div></div>
@@ -135,6 +136,7 @@ const ERR={"auth/invalid-credential":"Email atau kata sandi salah.","auth/wrong-
 const er=e=>{$("lm").textContent=ERR[e.code]??(e.message||e.code)},cred=()=>[$("le").value.trim(),$("lp").value];
 $("lin").onclick=()=>auth.signInWithEmailAndPassword(...cred()).catch(er);
 $("lup").onclick=async()=>{try{const c=await auth.createUserWithEmailAndPassword(...cred());await c.user.sendEmailVerification()}catch(x){er(x)}};
+$("lrq").onclick=()=>{wantReq=true;$("lgo").click()};
 $("lgo").onclick=()=>auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(er);
 $("lrs").onclick=e=>{e.preventDefault();const m=$("le").value.trim();if(!m){$("lm").textContent="Isi email dulu.";return}auth.sendPasswordResetEmail(m).then(()=>$("lm").textContent="Email atur ulang kata sandi sudah dikirim.").catch(er)};
 $("out").onclick=$("vo").onclick=()=>auth.signOut().then(()=>location.reload());
@@ -143,7 +145,7 @@ $("vk").onclick=async()=>{const u=auth.currentUser;await u.reload();if(u.emailVe
 function izl(){$("izl").innerHTML=Object.keys(iz).sort().map(e=>`<div class="it" style="cursor:default"><span>${E(e)}</span><button class="btn" style="margin-left:auto" data-e="${E(e)}">Hapus</button></div>`).join("")||'<div class="it sub">Belum ada email.</div>'}
 $("izb").onclick=async()=>{const L=$("izt").value.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@\S+\.\S+$/.test(x));if(!L.length)return alert("Tidak ada email yang valid.");try{for(const e of L)await fs.doc("izin/"+e).set({t:Date.now()});$("izt").value="";$("izs").textContent="✓ "+L.length+" email ditambahkan"}catch(e){alert("Gagal: "+(e.message||e.code))}};
 $("izl").onclick=async e=>{const m=e.target.dataset.e;if(!m||!confirm("Hapus izin "+m+"? (Data yang sudah diisi tidak ikut terhapus)"))return;try{await fs.doc("izin/"+m).delete()}catch(x){alert("Gagal: "+(x.message||x.code))}};
-var mn={},reqd=false;
+var mn={},reqd=false,wantReq=false;
 function mnl(){const k=Object.keys(mn);$("mnc").hidden=!k.length;$("mnl").innerHTML=k.map(id=>`<div class="it" style="cursor:default"><span>${E(mn[id].nama||"")} <small>${E(mn[id].email||"")}</small></span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn p" data-a="y" data-u="${E(id)}">Izinkan</button><button class="btn" data-a="n" data-u="${E(id)}">Tolak</button></span></div>`).join("")}
 $("mnl").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const id=b.dataset.u,d=mn[id];if(!d)return;try{if(b.dataset.a=="y")await fs.doc("izin/"+String(d.email).toLowerCase()).set({t:Date.now()});await fs.doc("menunggu/"+id).delete()}catch(x){alert("Gagal: "+(x.message||x.code))}};
 auth.onAuthStateChanged(u=>{if(!u){$("app").hidden=true;$("vf").hidden=true;$("lgf").hidden=false;$("lg").hidden=false;return}
@@ -156,6 +158,7 @@ const er2=e=>{$("note").hidden=false;if(e.code=="permission-denied"){if(isOwner|
 $("note").innerHTML='Akun Anda (<b>'+E(em)+'</b>) sudah terdaftar, tetapi belum disetujui admin. Tekan tombol di bawah untuk meminta persetujuan.<div class="row" style="justify-content:flex-start"><button class="btn p" id="mnb">Minta persetujuan</button><button class="btn" id="mnr">Muat ulang</button></div><div id="mns" class="sub"></div>';
 $("mnr").onclick=()=>location.reload();
 $("mnb").onclick=async()=>{try{await fs.doc("menunggu/"+me).set({email:em,nama:u.displayName||"",t:Date.now()});$("mnb").disabled=true;$("mns").textContent="✓ Permintaan terkirim ke admin. Setelah admin menyetujui, tekan Muat ulang."}catch(x){$("mns").textContent="Gagal: "+(x.message||x.code)}};
+if(wantReq)$("mnb").click();
 fs.doc("menunggu/"+me).get().then(d=>{if(d.exists){$("mnb").disabled=true;$("mns").textContent="✓ Permintaan sudah terkirim, menunggu persetujuan admin."}}).catch(()=>{})}
 else $("note").textContent="Tidak dapat membaca data: "+(e.message||e.code)};
 const on=(p,f)=>(p.includes("/")&&p.split("/").length%2==0?fs.doc(p):fs.collection(p)).onSnapshot(f,er2),S=()=>{if(!$("s").hidden)sk()};
